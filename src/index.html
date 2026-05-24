@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADG Brieffer — Intelligence Briefing Engine</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+body{background:#0b0f19;color:#e4e4e7;min-height:100vh}
+:root{--gold:#f59e0b;--gold-dim:#d97706;--gold-bg:rgba(245,158,11,.1);--gold-border:rgba(245,158,11,.2);--card-bg:rgba(255,255,255,.03);--card-border:rgba(255,255,255,.06);--muted:#71717a;--text:#e4e4e7;--green:#4ade80;--red:#f87171;--blue:#60a5fa}
+.container{max-width:1200px;margin:0 auto;padding:20px}
+.hidden{display:none!important}
+.header{padding:28px 0 20px;position:relative}
+.header h1{font-size:26px;font-weight:700;letter-spacing:-.02em;background:linear-gradient(135deg,#fff,#94a3b8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header p{color:var(--muted);font-size:13px;margin-top:4px}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:100px;color:var(--gold);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px}
+.tabs{display:flex;gap:4px;margin:16px 0;border-bottom:1px solid rgba(255,255,255,.06);padding-bottom:2px;flex-wrap:wrap}
+.tab{padding:10px 20px;background:none;border:none;color:var(--muted);font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:16px 0}
+.stat-card{padding:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px}
+.stat-card .num{font-size:28px;font-weight:700;color:var(--gold);margin-bottom:4px}
+.stat-card .label{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.source-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+.source-card{padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;transition:all .2s}
+.source-card:hover{border-color:var(--gold-border)}
+.source-card .name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
+.source-card .url{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.source-card .meta{display:flex;gap:8px;margin-top:8px;font-size:11px}
+.source-card .tag{padding:2px 8px;border-radius:100px;font-size:10px;font-weight:500;background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-border)}
+.article-list{display:flex;flex-direction:column;gap:8px}
+.article-item{padding:12px 14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;transition:all .2s}
+.article-item:hover{border-color:rgba(255,255,255,.1)}
+.article-item .atitle{font-size:14px;font-weight:500;color:var(--text);text-decoration:none;display:block;margin-bottom:4px}
+.article-item .atitle:hover{color:var(--gold)}
+.article-item .ameta{display:flex;gap:10px;font-size:11px;color:var(--muted);flex-wrap:wrap}
+.article-item .asource{color:var(--gold)}
+.article-item .asentiment{display:inline-flex;align-items:center;gap:3px}
+.article-item .adot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.dot-pos{background:var(--green)}
+.dot-neg{background:var(--red)}
+.dot-neu{background:#888}
+.gen-section{padding:20px;background:var(--card-bg);border:1px solid var(--gold-border);border-radius:12px;margin:16px 0}
+.gen-section h3{font-size:16px;font-weight:600;margin-bottom:12px;color:var(--gold)}
+.gen-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.gen-controls select{padding:10px 14px;background:#1a1f2e;border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:13px;min-width:200px;cursor:pointer}
+.gen-controls select:focus{border-color:var(--gold);outline:none}
+.gen-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 24px;background:linear-gradient(135deg,var(--gold),var(--gold-dim));border:none;border-radius:8px;color:#111;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.gen-btn:hover{opacity:.9;transform:translateY(-1px)}
+.gen-btn:disabled{opacity:.5;cursor:wait;transform:none}
+.gen-btn i{font-size:14px}
+.tpl-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin:12px 0}
+.tpl-card{padding:14px;background:var(--card-bg);border:2px solid var(--card-border);border-radius:10px;cursor:pointer;transition:all .2s;text-align:center}
+.tpl-card:hover{border-color:var(--gold-border)}
+.tpl-card.active{border-color:var(--gold);background:var(--gold-bg)}
+.tpl-card .tpl-icon{font-size:22px;color:var(--gold);margin-bottom:6px}
+.tpl-card .tpl-name{font-size:13px;font-weight:600;color:var(--text)}
+.tpl-card .tpl-type{font-size:10px;color:var(--muted);margin-top:2px}
+.topic-bar{display:flex;gap:8px;margin:12px 0}
+.topic-bar input{flex:1;padding:10px 14px;background:#1a1f2e;border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:13px}
+.topic-bar input:focus{border-color:var(--gold);outline:none}
+.topic-bar input::placeholder{color:#555}
+.lang-select{display:flex;gap:4px;margin:8px 0}
+.lang-btn{padding:6px 14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:6px;color:var(--muted);font-size:12px;cursor:pointer;transition:all .2s}
+.lang-btn.active{background:var(--gold-bg);border-color:var(--gold);color:var(--gold)}
+/* Professional brief rendering */
+.pro-brief{font-family:'Courier New',Courier,monospace;background:#0a0e14;border:1px solid #1f2937;border-radius:8px;padding:28px;margin:16px 0;line-height:1.7;font-size:12px;color:#d1d5db;white-space:pre-wrap}
+.pro-brief .brief-header{text-align:center;color:var(--gold);font-weight:700;font-size:14px;letter-spacing:.1em}
+.pro-brief .brief-subhead{text-align:center;color:#94a3b8;font-size:11px;margin-bottom:16px}
+.pro-brief .brief-meta{font-size:11px;color:#94a3b8;margin-bottom:12px}
+.pro-brief .brief-section{color:var(--gold);font-weight:600;margin-top:16px}
+.pro-brief .brief-para{color:#d1d5db;margin-bottom:12px}
+.pro-brief .brief-footer{font-size:10px;color:var(--muted);margin-top:16px;border-top:1px solid #1f2937;padding-top:12px}
+.ct-indicator{font-size:10px;padding:1px 6px;border-radius:4px}
+.ct-full{background:rgba(74,222,128,.1);color:var(--green)}
+.ct-summary{background:rgba(96,165,250,.1);color:#60a5fa}
+.ct-image{background:rgba(245,158,11,.1);color:var(--gold)}
+.cat-group{margin:12px 0}
+.cat-header{font-size:13px;font-weight:600;color:var(--gold);padding:8px 12px;background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.cat-body{padding:8px 0;display:none}
+.cat-body.open{display:block}
+.cat-source{padding:6px 12px;font-size:12px;color:var(--muted);border-bottom:1px solid rgba(255,255,255,.03)}
+.cat-source .s-name{color:var(--text);font-weight:500}
+.download-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.2);border-radius:6px;color:#60a5fa;font-size:12px;cursor:pointer;margin:8px 0}
+.download-btn:hover{background:rgba(96,165,250,.2)}
+.brief-card{padding:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:10px}
+.brief-card h4{font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px}
+.brief-card .bmeta{font-size:11px;color:var(--muted);margin-bottom:8px;display:flex;gap:12px;flex-wrap:wrap}
+.brief-card .btag{padding:2px 8px;border-radius:100px;font-size:10px;background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-border)}
+.brief-card .bsummary{font-size:13px;color:#a1a1aa;line-height:1.5}
+.brief-card .bcontent{padding:14px;background:#0d1117;border:1px solid #1f2937;border-radius:8px;margin-top:10px;font-size:12px;line-height:1.6;white-space:pre-wrap;font-family:'SF Mono','Fira Code',monospace;color:#d1d5db;display:none}
+.brief-card .bcontent.open{display:block}
+.brief-card .bexpand{background:none;border:none;color:var(--gold);font-size:12px;cursor:pointer;padding:4px 0}
+.brief-card .bexpand:hover{text-decoration:underline}
+.template-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin:16px 0}
+.template-card{padding:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;cursor:pointer;transition:all .2s}
+.template-card:hover{border-color:var(--gold-border);background:rgba(245,158,11,.05)}
+.template-card h4{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
+.template-card .ttype{font-size:11px;color:var(--gold);margin-bottom:6px}
+.template-card .tdesc{font-size:12px;color:var(--muted);line-height:1.4}
+.loading{text-align:center;padding:40px;color:var(--muted)}
+.loading i{font-size:24px;margin-bottom:10px;display:block;color:var(--gold)}
+.spin{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:40px;color:var(--muted)}
+.empty-state i{font-size:32px;margin-bottom:12px;display:block;color:var(--muted)}
+.error-state{padding:20px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);border-radius:10px;color:var(--red);text-align:center;margin:16px 0}
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;font-size:13px;z-index:1000;transform:translateY(100px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast-success{background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);color:var(--green)}
+.toast-error{background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.3);color:var(--red)}
+
+/* ─── RESPONSIVE BREAKPOINTS ─── */
+/* Tablets */
+@media(max-width:900px){
+  .nav-tabs{flex-wrap:wrap;gap:4px}
+  .nav-tab{font-size:11px;padding:6px 10px}
+  .container{padding:12px}
+  .chart-grid{grid-template-columns:1fr}
+  .stat-cards{grid-template-columns:repeat(2,1fr)}
+  .brief-card{padding:12px}
+  .source-grid{grid-template-columns:repeat(2,1fr)}
+}
+/* Phones landscape */
+@media(max-width:640px){
+  header{padding:8px 12px;flex-wrap:wrap}
+  header h1{font-size:13px}
+  header .brand span{display:none}
+  .container{padding:8px}
+  .nav-tab{font-size:10px;padding:4px 8px}
+  .stat-cards{grid-template-columns:1fr 1fr}
+  .source-grid{grid-template-columns:1fr}
+  .intel-grid{grid-template-columns:1fr}
+  .btn{padding:6px 12px;font-size:11px}
+  .network-controls{flex-direction:column;gap:6px}
+  .audio-controls{flex-direction:column}
+  .tab-content{overflow-x:auto}
+}
+/* Phones portrait */
+@media(max-width:400px){
+  header .brand-icon{width:22px;height:22px;font-size:11px}
+  header nav{display:none}
+  .stat-cards{grid-template-columns:1fr 1fr;gap:4px}
+  .decade-bar{font-size:10px}
+}
+.beta-badge{position:absolute;top:12px;right:16px;display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#d4a84b,#c4952e);color:#1a1a2e;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.5px;box-shadow:0 2px 6px rgba(0,0,0,.25);z-index:200;cursor:default;transition:transform .2s ease}.beta-badge:hover{transform:scale(1.08)}.beta-badge i{font-size:10px}.beta-badge .version{font-weight:400;opacity:.7;margin-left:2px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="badge"><i class="fas fa-bolt"></i>&nbsp;Intelligence Engine</div>
+    <h1>ADG Brieffer</h1>
+    <p>AI-powered intelligence briefing from 20+ West Africa news sources</p>
+    <div class="beta-badge" title="In Development"><i class="fas fa-flask"></i> BETA <span class="version">v2.0.1</span></div>
+  </div>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Main navigation">
+    <button class="tab active" data-tab="dashboard" role="tab" aria-selected="true" aria-controls="content"><i class="fas fa-chart-simple"></i>&nbsp;Dashboard</button>
+    <button class="tab" data-tab="generate" role="tab" aria-selected="false" aria-controls="content"><i class="fas fa-brain"></i>&nbsp;Generate Brief</button>
+    <button class="tab" data-tab="sources" role="tab" aria-selected="false" aria-controls="content"><i class="fas fa-satellite-dish"></i>&nbsp;Sources</button>
+    <button class="tab" data-tab="articles" role="tab" aria-selected="false" aria-controls="content"><i class="fas fa-newspaper"></i>&nbsp;Articles</button>
+    <button class="tab" data-tab="templates" role="tab" aria-selected="false" aria-controls="content"><i class="fas fa-clipboard"></i>&nbsp;Templates</button>
+    <button class="tab" data-tab="briefs" role="tab" aria-selected="false" aria-controls="content"><i class="fas fa-file-lines"></i>&nbsp;Briefs</button>
+    <button class="tab" data-tab="intel" role="tab" aria-selected="false" aria-controls="content"><i class="fas fa-sitemap"></i>&nbsp;Intel Map</button>
+    <button class="tab" data-tab="viz" role="tab" aria-selected="false" aria-controls="content"><i class="fas fa-chart-pie"></i>&nbsp;Visualize</button>
+    <button class="tab" data-tab="audio" role="tab" aria-selected="false" aria-controls="content"><i class="fas fa-headphones"></i>&nbsp;Audio</button>
+  </nav>
+  <div id="content" role="tabpanel" aria-label="Tab content"></div>
+</div>
+<div class="toast" id="toast" role="alert" aria-live="polite"></div>
+<script>
+function escapeHtml(str) {
+  if (!str) return '';
+  var d = document.createElement('div');
+  d.appendChild(document.createTextNode(str));
+  return d.innerHTML;
+}
+const API = "/api/data/brieffer";
+const AI_API = "/api/data/brieffer/ai";
+let state = { resources: { sources: [], articles: [], briefs: [], templates: [], ai_templates: [], ai_briefs: [], ai_stats: null }, selectedTemplate: 1, selectedLang: "en" };
+
+function showToast(m, type="success"){const t=document.getElementById("toast");t.textContent=m;t.className="toast toast-"+type+" show";setTimeout(()=>t.classList.remove("show"),3000)}
+function $(id){return document.getElementById(id)}
+
+function loadSection(section){
+  const content=$("content");
+  content.innerHTML='<div class="loading"><i class="fas fa-circle-notch spin"></i>Loading...</div>';
+  switch(section){
+    case "dashboard": loadDashboard(); break;
+    case "generate": loadGenerate(); break;
+    case "sources": loadSources(); break;
+    case "articles": loadArticles(); break;
+    case "templates": loadTemplates(); break;
+    case "briefs": loadBriefs(); break;
+    case "intel": loadIntel(); break;
+    case "viz": loadViz(); break;
+    case "audio": loadAudioTab(); break;
+  }
+}
+
+// ─── TAB SWITCHING ───
+document.getElementById("tabs").addEventListener("click", e=>{
+  const tab=e.target.closest(".tab");
+  if(!tab)return;
+  document.querySelectorAll(".tab").forEach(t=>{t.classList.remove("active");t.setAttribute("aria-selected","false")});
+  tab.classList.add("active");
+  tab.setAttribute("aria-selected","true");
+  loadSection(tab.dataset.tab);
+});
+
+// ─── DASHBOARD ───
+async function loadDashboard(){
+  const content=$("content");
+  try{
+    const [stats, briefRes, tplRes] = await Promise.all([
+      fetch(AI_API+"/stats").then(r=>r.json()),
+      fetch(AI_API+"/briefs?limit=3").then(r=>r.json()),
+      fetch(API+"/templates").then(r=>r.json())
+    ]);
+    state.resources.ai_stats = stats;
+    const s = stats;
+    let html=`
+      <div class="stats-grid">
+        <div class="stat-card"><div class="num">${s.total_articles||0}</div><div class="label">Articles Collected</div></div>
+        <div class="stat-card"><div class="num">${s.total_sources||0}</div><div class="label">Active Sources</div></div>
+        <div class="stat-card"><div class="num">${s.total_categories||0}</div><div class="label">Categories</div></div>
+        <div class="stat-card"><div class="num">${s.total_briefs_generated||0}</div><div class="label">Briefs Generated</div></div>
+      </div>
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr))">
+        <div class="stat-card"><div class="num" style="color:var(--green)">${(s.sentiment_breakdown||{}).Positive||0}</div><div class="label">Positive</div></div>
+        <div class="stat-card"><div class="num" style="color:var(--red)">${(s.sentiment_breakdown||{}).Negative||0}</div><div class="label">Negative</div></div>
+        <div class="stat-card"><div class="num" style="color:#888">${(s.sentiment_breakdown||{}).Neutral||0}</div><div class="label">Neutral</div></div>
+      </div>`;
+    
+    // Templates
+    if(tplRes.templates&&tplRes.templates.length){
+      html+=`<h3 style="font-size:14px;font-weight:600;margin:20px 0 10px;color:var(--muted)">AVAILABLE TEMPLATES</h3>
+      <div class="template-grid">`;
+      tplRes.templates.forEach(t=>{
+        html+=`<div class="template-card"><h4>${escapeHtml(t.name)}</h4><div class="ttype">${escapeHtml(t.type)}</div><div class="tdesc">${escapeHtml(t.description||"No description")}</div></div>`;
+      });
+      html+=`</div>`;
+    }
+
+    // Recent briefs
+    if(briefRes.briefs&&briefRes.briefs.length){
+      html+=`<h3 style="font-size:14px;font-weight:600;margin:20px 0 10px;color:var(--muted)">RECENT BRIEFS</h3>`;
+      briefRes.briefs.forEach(b=>{
+        html+=`<div class="brief-card">
+          <h4>${escapeHtml(b.title)}</h4>
+          <div class="bmeta"><span>${escapeHtml(b.template_name||"")}</span><span>${escapeHtml(b.created_at||"")}</span></div>
+          <div class="bsummary">${escapeHtml((b.summary||"").slice(0,200))}</div>
+        </div>`;
+      });
+    }
+    content.innerHTML=html;
+  } catch(e){
+    content.innerHTML=`<div class="error-state"><i class="fas fa-triangle-exclamation"></i><p>Failed to load dashboard: ${e.message}</p></div>`;
+  }
+}
+
+// ─── GENERATE BRIEF ───
+async function loadGenerate(){
+  const content=$("content");
+  try{
+    const [tplRes, statsRes] = await Promise.all([
+      fetch(AI_API+"/templates").then(r=>r.json()),
+      fetch(AI_API+"/stats").then(r=>r.json())
+    ]);
+    state.resources.ai_templates = tplRes.templates||[];
+    const stats = statsRes;
+    
+    let html=`
+      <div class="gen-section">
+        <h3><i class="fas fa-brain"></i>&nbsp;Generate Intelligence Brief</h3>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:8px">
+          Analyzes ${stats.total_articles||0} articles from ${stats.total_sources||0} sources. 
+          Produces a professional one-page brief with introduction, 3 analysis sections, 
+          conclusion, footnotes, and categorized sources.
+        </p>
+        
+        <div style="font-size:11px;color:var(--muted);margin:8px 0;font-weight:600">Select Template</div>
+        <div class="tpl-cards" id="tplCards">`;
+    (tplRes.templates||[]).forEach((t,i)=>{
+      const icons={1:"fa-briefcase",2:"fa-file-pen",3:"fa-shield-halved",4:"fa-newspaper"};
+      const active=i===0?"active":"";
+      html+=`<div class="tpl-card ${active}" data-tpl="${t.id}" onclick="selectTemplate(${t.id})">
+        <div class="tpl-icon"><i class="fas ${icons[t.id]||'fa-file-lines'}"></i></div>
+        <div class="tpl-name">${escapeHtml(t.name)}</div>
+        <div class="tpl-type">${t.template_type||"brief"}</div>
+      </div>`;
+    });
+    html+=`</div>
+        
+        <div style="font-size:11px;color:var(--muted);margin:8px 0;font-weight:600">Custom Topic Search <span style="font-weight:400;color:var(--muted)">(optional - type a specific subject)</span></div>
+        <div class="topic-bar">
+          <input type="text" id="topicInput" aria-label="Search topics" placeholder="Type a topic (e.g. Senegal elections, China Africa trade, ECOWAS security)..." onkeydown="if(event.key==='Enter')triggerGeneration()">
+          <button class="gen-btn" aria-label="Clear search" onclick="document.getElementById('topicInput').value='';this.blur()" style="background:none;border:1px solid var(--card-border);color:var(--muted);padding:10px 14px"><i class="fas fa-xmark"></i></button>
+        </div>
+        
+        <div class="lang-select">
+          <button class="lang-btn active" onclick="selectLang('en',this)">EN</button>
+          <button class="lang-btn" onclick="selectLang('fr',this)">FR</button>
+        </div>
+        
+        <button class="gen-btn" id="genBtn" aria-label="Generate brief" onclick="triggerGeneration()" style="margin-top:4px">
+          <i class="fas fa-wand-magic-sparkles"></i>&nbsp;Generate Brief
+        </button>
+      </div>
+      <div id="genResult"></div>
+      <h3 style="font-size:14px;font-weight:600;margin:20px 0 10px;color:var(--muted)">GENERATED BRIEFS</h3>
+      <div id="genBriefsList"><div class="loading"><i class="fas fa-circle-notch spin"></i>Loading briefs...</div></div>`;
+    content.innerHTML=html;
+    state.selectedTemplate = (tplRes.templates||[])[0]?.id || 1;
+    loadGeneratedBriefs();
+  } catch(e){
+    content.innerHTML=`<div class="error-state"><i class="fas fa-triangle-exclamation"></i><p>Failed: ${e.message}</p></div>`;
+  }
+}
+
+
+function selectTemplate(id){
+  state.selectedTemplate = id;
+  document.querySelectorAll(".tpl-card").forEach(c=>c.classList.remove("active"));
+  document.querySelector(`.tpl-card[data-tpl="${id}"]`)?.classList.add("active");
+}
+
+function selectLang(lang, btn){
+  state.selectedLang = lang;
+  document.querySelectorAll(".lang-btn").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+async function triggerGeneration(){
+  const btn = document.getElementById("genBtn");
+  const result = document.getElementById("genResult");
+  btn.disabled=true;
+  btn.innerHTML='<i class="fas fa-circle-notch spin"></i>&nbsp;Generating...';
+  result.innerHTML='<div class="loading"><i class="fas fa-brain spin"></i>Analyzing articles, extracting keywords, computing sentiment...</div>';
+  try{
+    const tpl = state.selectedTemplate;
+    const topic = document.getElementById("topicInput")?.value?.trim() || "";
+    const params = new URLSearchParams({template_id: tpl});
+    if(topic) params.set("topic", topic);
+    const res = await fetch(AI_API+"/generate?"+params, {method:"POST"});
+    if(!res.ok) { const err = await res.json(); throw new Error(err.detail||err.error||"Generation failed"); }
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    result.innerHTML=renderProfessionalBrief(data);
+    showToast("Brief generated from "+data.article_count+" articles");
+    loadGeneratedBriefs();
+  } catch(e){
+    result.innerHTML=`<div class="error-state"><i class="fas fa-triangle-exclamation"></i><p>${e.message}</p></div>`;
+    showToast(e.message,"error");
+  } finally {
+    btn.disabled=false;
+    btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i>&nbsp;Generate Brief';
+  }
+}
+
+function renderProfessionalBrief(data){
+  const content = data.content || "";
+  const parts = content.split("\n");
+  let html = "";
+  for(const line of parts){
+    if(line.startsWith("=") || line.startsWith("-")){
+      html += `<div style="color:var(--muted);border-bottom:1px solid rgba(255,255,255,.06);margin:8px 0"></div>`;
+    } else if(line.startsWith("ADG INTELLIGENCE BRIEF")){
+      html += `<div class="brief-header">` + line.trim() + `</div>`;
+    } else if(line.startsWith("Axel Dev Group")){
+      html += `<div class="brief-subhead">` + line.trim() + `</div>`;
+    } else if(line.startsWith("1. ") || line.startsWith("2. ") || line.startsWith("3. ") || line.startsWith("4. ") || line.startsWith("5. ")){
+      html += `<div class="brief-section">` + line + `</div>`;
+    } else if(line.startsWith("TOPIC:") || line.startsWith("DATE:") || line.startsWith("CLASSIFICATION:") || line.startsWith("BRIEF TYPE:") || line.startsWith("SOURCES CONSULTED:")){
+      const [k, ...v] = line.split(":");
+      html += `<div class="brief-meta"><span style="color:var(--gold)">${k}:</span> ${v.join(":").trim()}</div>`;
+    } else if(line.startsWith("FOOTNOTES") || line.startsWith("SOURCES BY CATEGORY")){
+      html += `<div class="brief-section">` + line + `</div>`;
+    } else if(line.startsWith("Generated by ADG")){
+      html += `<div class="brief-footer">` + line + `</div>`;
+    } else if(line.trim()){
+      html += `<div class="brief-para">` + line + `</div>`;
+    }
+  }
+  return `<div class="pro-brief">` + html + `</div>
+    <div style="display:flex;gap:8px;margin:8px 0">
+      <button class="download-btn" aria-label="Download brief as text file" onclick="downloadBriefText()"><i class="fas fa-download"></i> Download as Text</button>
+      <button class="download-btn" aria-label="Copy brief to clipboard" onclick="copyBriefContent()"><i class="fas fa-copy"></i> Copy to Clipboard</button>
+    </div>`;
+}
+
+function downloadBriefText(){
+  const brief = document.querySelector(".pro-brief");
+  if(!brief) return;
+  const text = brief.textContent;
+  const blob = new Blob([text], {type: "text/plain"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `adg-brief-${new Date().toISOString().slice(0,10)}.txt`;
+  a.click();
+}
+
+function copyBriefContent(){
+  const brief = document.querySelector(".pro-brief");
+  if(!brief) return;
+  navigator.clipboard.writeText(brief.textContent).then(()=>showToast("Brief copied to clipboard"));
+}
+
+async function loadGeneratedBriefs(){
+  const list=document.getElementById("genBriefsList");
+  if(!list)return;
+  try{
+    const res=await fetch(AI_API+"/briefs?limit=10");
+    const data=await res.json();
+    if(!data.briefs||!data.briefs.length){
+      list.innerHTML='<div class="empty-state"><p>No briefs generated yet. Use the form above to create one.</p></div>';
+      return;
+    }
+    let html="";
+    data.briefs.forEach(b=>{
+      const isNew = b.content && b.content.includes("ADG INTELLIGENCE BRIEF");
+      html+=`<div class="brief-card">
+        <h4>${escapeHtml(b.title)}</h4>
+        <div class="bmeta">
+          <span class="btag">${escapeHtml(b.template_name||"Brief")}</span>
+          <span>${escapeHtml(b.created_at||"")}</span>
+          ${isNew?'<span class="btag" style="background:rgba(74,222,128,.1);color:var(--green);border-color:rgba(74,222,128,.2)">Professional Format</span>':''}
+        </div>
+        <div class="bsummary">${escapeHtml((b.summary||"").slice(0,300))}</div>
+        ${isNew
+          ? `<button class="bexpand" data-brief-id="${escapeHtml(b.id || 'raw')}" onclick="showBriefContent(this)">Show Professional Brief</button>`
+          : `<button class="bexpand" onclick="toggleBriefContent(this)">Show full brief</button>
+             <div class="bcontent">${escapeHtml(b.content||"")}</div>`
+        }
+      </div>`;
+    });
+    list.innerHTML=html;
+  } catch(e){
+    list.innerHTML='<div class="error-state">Failed to load briefs</div>';
+  }
+}
+
+function toggleBriefContent(btn) {
+  const content=btn.nextElementSibling;
+  if(content&&content.classList.contains("bcontent")){
+    const isOpen=content.classList.toggle("open");
+    btn.textContent=isOpen?"Hide full brief":"Show full brief";
+  }
+}
+
+function showBriefContent(btn) {
+  var briefId = btn.getAttribute('data-brief-id');
+  var parent = btn.closest('.brief-card');
+  if (!parent) return;
+  // Try finding by checking state.resources.ai_briefs
+  var briefs = (state.resources && state.resources.ai_briefs) || [];
+  for (var i = 0; i < briefs.length; i++) {
+    var b = briefs[i];
+    var bid = (b.id !== undefined && b.id !== null) ? String(b.id) : null;
+    if (bid === briefId || (briefId === 'raw' && i === 0)) {
+      var div = document.createElement('div');
+      div.style.cssText = 'background:var(--card-bg);padding:12px;border-radius:8px;margin-top:8px;font-size:12px;line-height:1.6;white-space:pre-wrap;border:1px solid var(--gold-border)';
+      div.textContent = b.content;
+      parent.appendChild(div);
+      btn.remove();
+      return;
+    }
+  }
+}
+
+// ─── SOURCES (grouped by category) ───
+async function loadSources(){
+  const content=$("content");
+  try{
+    const [flatRes, catRes] = await Promise.all([
+      fetch(API+"/sources").then(r=>r.json()),
+      fetch(AI_API+"/sources-by-category").then(r=>r.json())
+    ]);
+
+    if(!flatRes.sources||!flatRes.sources.length){
+      content.innerHTML='<div class="empty-state"><i class="fas fa-satellite-dish"></i><p>No sources configured.</p></div>';
+      return;
+    }
+
+    let html=`
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+        <div class="stat-card"><div class="num">${flatRes.total}</div><div class="label">Configured Sources</div></div>
+        <div class="stat-card"><div class="num">${Object.keys(catRes.categories||{}).length}</div><div class="label">Categories</div></div>
+      </div>
+      <h3 style="font-size:14px;font-weight:600;margin:16px 0 10px;color:var(--muted)">SOURCES BY CATEGORY</h3>`;
+
+    const cats = catRes.categories || {};
+    for(const [cat, info] of Object.entries(cats)){
+      html+=`<div class="cat-group">
+        <div class="cat-header" onclick="this.nextElementSibling.classList.toggle('open')">
+          <span><i class="fas fa-folder"></i> ${cat}</span>
+          <span style="font-size:11px">${info.total_sources} sources, ${info.total_articles} articles</span>
+        </div>
+        <div class="cat-body">`;
+      info.sources.forEach(s=>{
+        html+=`<div class="cat-source"><span class="s-name">${escapeHtml(s.source)}</span> (${s.article_count} articles)</div>`;
+      });
+      html+=`</div></div>`;
+    }
+
+    content.innerHTML=html;
+  } catch(e){
+    content.innerHTML=`<div class="error-state"><i class="fas fa-triangle-exclamation"></i><p>${e.message}</p></div>`;
+  }
+}
+
+// ─── ARTICLES (with content type indicators) ───
+async function loadArticles(){
+  const content=$("content");
+  try{
+    const res=await fetch(API+"/articles?limit=50");
+    const data=await res.json();
+    if(!data.articles||!data.articles.length){
+      content.innerHTML=`<div class="empty-state"><i class="fas fa-newspaper"></i><p>${data.message||"No articles collected."}</p></div>`;
+      return;
+    }
+    let html=`<div class="stats-grid">
+      <div class="stat-card"><div class="num">${data.total}</div><div class="label">Articles</div></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+      <span class="ct-indicator ct-full">Full Text</span> 
+      <span class="ct-indicator ct-summary">Summary</span> 
+      <span class="ct-indicator ct-image">Has Image</span>
+    </div>
+    <div class="article-list">`;
+    data.articles.forEach(a=>{
+      const sent=a.sentiment||"Neutral";
+      const dotClass=sent==="Positive"?"dot-pos":sent==="Negative"?"dot-neg":"dot-neu";
+      const summaryLen = (a.summary||"").length;
+      const hasImg = (a.image_url||"").length > 5;
+      let ctClass = "ct-summary";
+      let ctLabel = "Summary";
+      if(summaryLen > 300){
+        ctClass = "ct-full";
+        ctLabel = "Full Text";
+      }
+      if(hasImg){
+        ctClass = "ct-image";
+        ctLabel = "Has Image";
+      }
+      html+=`<div class="article-item">
+        <a class="atitle" href="${escapeHtml(a.link||"#")}" target="_blank">${escapeHtml(a.title||"Untitled")}</a>
+        <div class="ameta">
+          <span class="asource"><i class="fas fa-broadcast-tower"></i> ${escapeHtml(a.source||"")}</span>
+          <span class="asentiment"><span class="adot ${dotClass}"></span>${escapeHtml(sent)}</span>
+          <span>${escapeHtml(a.category||"")}</span>
+          <span class="ct-indicator ${ctClass}">${ctLabel}</span>
+          <span>${escapeHtml(a.published?new Date(a.published).toLocaleDateString():"")}</span>
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+    content.innerHTML=html;
+  } catch(e){
+    content.innerHTML=`<div class="error-state"><i class="fas fa-triangle-exclamation"></i><p>${e.message}</p></div>`;
+  }
+}
+
+// ─── TEMPLATES ───
+async function loadTemplates(){
+  const content=$("content");
+  try{
+    const res=await fetch(API+"/templates");
+    const data=await res.json();
+    if(!data.templates||!data.templates.length){
+      content.innerHTML='<div class="empty-state"><i class="fas fa-clipboard"></i><p>No templates available.</p></div>';
+      return;
+    }
+    let html=`<div class="stats-grid"><div class="stat-card"><div class="num">${data.total}</div><div class="label">Brief Templates</div></div></div><div class="template-grid">`;
+    data.templates.forEach(t=>{
+      html+=`<div class="template-card" onclick="showTemplate(${t.id})">
+        <h4>${escapeHtml(t.name)}</h4>
+        <div class="ttype">${escapeHtml(t.type)}</div>
+        <div class="tdesc">${escapeHtml(t.description||"Standard intelligence brief template")}</div>
+      </div>`;
+    });
+    html+=`</div><div id="templateDetail"></div>`;
+    content.innerHTML=html;
+  } catch(e){
+    content.innerHTML=`<div class="error-state"><i class="fas fa-triangle-exclamation"></i><p>${e.message}</p></div>`;
+  }
+}
+
+async function showTemplate(id){
+  const detail=document.getElementById("templateDetail");
+  try{
+    const res=await fetch(API+"/templates");
+    const data=await res.json();
+    const t=data.templates.find(t=>t.id===id);
+    if(!t){detail.innerHTML="";return;}
+    detail.innerHTML=`
+      <div class="brief-card">
+        <h4>${escapeHtml(t.name)}</h4>
+        <div class="bmeta"><span class="btag">${escapeHtml(t.type)}</span></div>
+        <div class="bcontent open" style="display:block">
+${escapeHtml(t.format&&t.format.raw?t.format.raw:t.format||"No structure defined")}
+        </div>
+      </div>`;
+  } catch(e){
+    detail.innerHTML=`<div class="error-state">${e.message}</div>`;
+  }
+}
+
+// ─── BRIEFS ───
+async function loadBriefs(){
+  const content=$("content");
+  try{
+    const res=await fetch(API+"/briefs?limit=20");
+    const data=await res.json();
+    if(!data.briefs||!data.briefs.length){
+      content.innerHTML=`<div class="empty-state"><i class="fas fa-file-lines"></i><p>${data.message||"No briefs yet."}</p></div>`;
+      return;
+    }
+    let html=`<div class="stats-grid"><div class="stat-card"><div class="num">${data.total}</div><div class="label">Briefs</div></div></div>`;
+    data.briefs.forEach(b=>{
+      const findings=b.key_findings||"";
+      const preview=b.executive_summary||b.summary||(b.content||"").slice(0,300);
+      html+=`<div class="brief-card">
+        <h4>${escapeHtml(b.title||"Brief #"+b.id)}</h4>
+        <div class="bmeta">
+          <span class="btag">${escapeHtml(b.brief_type||b.status||"")}</span>
+          <span>${escapeHtml(b.topic||"")}</span>
+          <span>${escapeHtml(b.created_at?new Date(b.created_at).toLocaleString():"")}</span>
+          <span>Generated by: ${escapeHtml(b.generated_by||"ADG Brieffer")}</span>
+        </div>
+        <div class="bsummary">${escapeHtml(preview.slice(0,400))}</div>
+        <button class="bexpand" onclick="toggleBriefContent(this)">Show full brief</button>
+        <div class="bcontent">${escapeHtml(b.content||"")}</div>
+      </div>`;
+    });
+    content.innerHTML=html;
+  } catch(e){
+    content.innerHTML=`<div class="error-state"><i class="fas fa-triangle-exclamation"></i><p>${e.message}</p></div>`;
+  }
+}
+
+// ─── INTELLIGENCE MAP (Clusters + Cross-Source + Chunks) ───
+async function loadIntel(){
+  const content=$("content");
+  content.innerHTML=`<div class="loading"><i class="fas fa-sitemap spin"></i>Loading intelligence map...</div>`;
+  try{
+    const [clsRes, csRes, chkRes] = await Promise.all([
+      fetch(AI_API+"/clusters?limit=20").then(r=>r.json()),
+      fetch(AI_API+"/cross-source?limit=10").then(r=>r.json()),
+      fetch(AI_API+"/chunks?language=en&limit=10").then(r=>r.json())
+    ]);
+    let html=`
+      <h3 style="font-size:14px;font-weight:600;margin:0 0 10px;color:var(--muted)">TOPIC CLUSTERS</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        Articles grouped by TF-IDF similarity. Each cluster represents a distinct topic thread.
+      </p>`;
+    
+    // Clusters
+    const clusters = clsRes.clusters||[];
+    if(clusters.length){
+      html+=`<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
+        <div class="stat-card"><div class="num">${clusters.length}</div><div class="label">Clusters</div></div>
+        <div class="stat-card"><div class="num">${clusters.reduce((s,c)=>s+(c.article_count||0),0)}</div><div class="label">Total Articles</div></div>
+      </div>
+      <div class="source-grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">`;
+      clusters.forEach(c=>{
+        const sentColor = c.sentiment_score > 0.1 ? "var(--green)" : c.sentiment_score < -0.1 ? "var(--red)" : "#888";
+        html+=`<div class="source-card">
+          <div class="name" style="font-size:13px">${escapeHtml((c.name||"Cluster").slice(0,50))}</div>
+          <div class="meta" style="margin-top:8px">
+            <span class="tag">${c.article_count||0} articles</span>
+            <span class="tag" style="background:rgba(96,165,250,.1);color:#60a5fa;border-color:rgba(96,165,250,.2)">${c.source_count||0} sources</span>
+            <span style="color:${sentColor};font-size:11px">Score: ${c.sentiment_score||0}</span>
+          </div>
+        </div>`;
+      });
+      html+=`</div>`;
+    } else {
+      html+=`<div class="empty-state"><i class="fas fa-sitemap"></i><p>No clusters generated yet. Go to Generate tab to create clusters.</p></div>`;
+    }
+
+    // Cross-source analyses
+    const analyses = csRes.analyses||[];
+    if(analyses.length){
+      html+=`<h3 style="font-size:14px;font-weight:600;margin:20px 0 10px;color:var(--muted)">CROSS-SOURCE ANALYSIS</h3>`;
+      analyses.forEach(a=>{
+        const convs = a.convergences||[];
+        const divs = a.divergences||[];
+        const blind = a.blind_spots||{};
+        html+=`<div class="brief-card">
+          <h4>${escapeHtml(a.cluster_name||"Cluster #"+a.cluster_id)}</h4>
+          <div class="bmeta">
+            <span class="btag" style="background:rgba(74,222,128,.1);color:var(--green);border-color:rgba(74,222,128,.2)">${convs.length} Convergences</span>
+            <span class="btag" style="background:rgba(248,113,113,.1);color:var(--red);border-color:rgba(248,113,113,.2)">${divs.length} Divergences</span>
+            <span class="btag">${Object.keys(blind).length} Blind spots</span>
+          </div>`;
+        if(convs.length){
+          html+=`<div class="bsummary" style="margin-top:8px"><strong>Convergences:</strong> `+
+            convs.slice(0,3).map(c=>`${escapeHtml(c.entity)} (${c.source_count} src)`).join(", ")+`</div>`;
+        }
+        if(divs.length){
+          html+=`<div class="bsummary" style="margin-top:4px"><strong>Divergences:</strong> `+
+            divs.slice(0,2).map(d=>`${escapeHtml(d.entity)}`).join(", ")+`</div>`;
+        }
+        html+=`</div>`;
+      });
+    }
+
+    // Chunks
+    const chunks = chkRes.chunks||[];
+    if(chunks.length){
+      html+=`<h3 style="font-size:14px;font-weight:600;margin:20px 0 10px;color:var(--muted)">ANALYSIS CHUNKS</h3>`;
+      chunks.forEach(c=>{
+        html+=`<div class="brief-card">
+          <h4>${escapeHtml(c.title||"Chunk #"+c.id)}</h4>
+          <div class="bmeta"><span class="btag">${escapeHtml(c.cluster_name||"Cluster")}</span><span>Score: ${c.sentiment_score||0}</span></div>
+          <div class="bsummary">${escapeHtml((c.summary||"").slice(0,300))}</div>
+          <button class="bexpand" onclick="toggleBriefContent(this)">Show chunk content</button>
+          <div class="bcontent">${escapeHtml(c.content||"")}</div>
+        </div>`;
+      });
+    }
+
+    content.innerHTML=html;
+  } catch(e){
+    content.innerHTML=`<div class="error-state"><i class="fas fa-triangle-exclamation"></i><p>${e.message}</p></div>`;
+  }
+}
+
+// ─── VISUALIZE (Charts) ───
+async function loadViz(){
+  const content=$("content");
+  content.innerHTML=`<div class="loading"><i class="fas fa-chart-pie spin"></i>Loading visualizations...</div>`;
+  try{
+    const [srcRes, sentRes, timeRes, netRes] = await Promise.all([
+      fetch(AI_API+"/viz/sources").then(r=>r.json()),
+      fetch(AI_API+"/viz/sentiment").then(r=>r.json()),
+      fetch(AI_API+"/viz/timeline?days=30").then(r=>r.json()),
+      fetch(AI_API+"/viz/cluster-network").then(r=>r.json())
+    ]);
+
+    let html=`
+      <div class="gen-section">
+        <h3><i class="fas fa-chart-pie"></i>&nbsp;Source Analysis</h3>
+        <div style="height:300px;position:relative"><canvas id="sourceChart" role="img" aria-label="Source analysis bar chart showing article sentiment by source"></canvas></div>
+      </div>
+      <div class="gen-section">
+        <h3><i class="fas fa-chart-bar"></i>&nbsp;Sentiment by Category</h3>
+        <div style="height:300px;position:relative"><canvas id="sentimentChart" role="img" aria-label="Sentiment by category bar chart"></canvas></div>
+      </div>
+      <div class="gen-section">
+        <h3><i class="fas fa-chart-line"></i>&nbsp;Coverage Timeline</h3>
+        <div style="height:250px;position:relative"><canvas id="timelineChart" role="img" aria-label="Coverage timeline line chart for the last 30 days"></canvas></div>
+      </div>
+      <div class="gen-section">
+        <h3><i class="fas fa-share-nodes"></i>&nbsp;Cluster Network</h3>
+        <div id="networkGraph" role="img" aria-label="Cluster network force graph showing topic relationships" style="height:400px;background:#0d1117;border-radius:8px;position:relative">
+          <p style="text-align:center;padding:180px 20px;color:var(--muted);font-size:13px">
+            <i class="fas fa-circle-notch spin"></i> Rendering network graph...
+          </p>
+        </div>
+      </div>`;
+
+    content.innerHTML=html;
+
+    // Render charts
+    renderSourceChart(srcRes);
+    renderSentimentChart(sentRes);
+    renderTimelineChart(timeRes);
+    renderNetworkGraph(netRes);
+
+  } catch(e){
+    content.innerHTML=`<div class="error-state"><i class="fas fa-triangle-exclamation"></i><p>${e.message}</p></div>`;
+  }
+}
+
+function renderSourceChart(data){
+  const ctx=document.getElementById("sourceChart");
+  if(!ctx||!data.labels||!data.labels.length)return;
+  new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:data.labels.map(l=>l.length>18?l.slice(0,15)+"...":l),
+      datasets:[
+        {label:"Positive",data:data.positive||[],backgroundColor:"rgba(74,222,128,.7)",borderRadius:3},
+        {label:"Negative",data:data.negative||[],backgroundColor:"rgba(248,113,113,.7)",borderRadius:3},
+        {label:"Neutral",data:data.neutral||[],backgroundColor:"rgba(136,136,136,.4)",borderRadius:3}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:"#94a3b8",font:{size:11}}}},
+      scales:{
+        x:{ticks:{color:"#71717a",font:{size:10},maxRotation:45},grid:{display:false}},
+        y:{ticks:{color:"#71717a",font:{size:10}},grid:{color:"rgba(255,255,255,.05)"}}
+      }
+    }
+  });
+}
+
+function renderSentimentChart(data){
+  const ctx=document.getElementById("sentimentChart");
+  if(!ctx||!data.labels||!data.labels.length)return;
+  new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:data.labels.map(l=>l.length>20?l.slice(0,17)+"...":l),
+      datasets:[
+        {label:"Positive",data:data.positive||[],backgroundColor:"rgba(74,222,128,.7)",borderRadius:3},
+        {label:"Negative",data:data.negative||[],backgroundColor:"rgba(248,113,113,.7)",borderRadius:3},
+        {label:"Neutral",data:data.neutral||[],backgroundColor:"rgba(136,136,136,.4)",borderRadius:3}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:"#94a3b8",font:{size:11}}}},
+      scales:{
+        x:{ticks:{color:"#71717a",font:{size:10},maxRotation:45},grid:{display:false}},
+        y:{ticks:{color:"#71717a",font:{size:10}},grid:{color:"rgba(255,255,255,.05)"}}
+      }
+    }
+  });
+}
+
+function renderTimelineChart(data){
+  const ctx=document.getElementById("timelineChart");
+  if(!ctx||!data.labels||!data.labels.length)return;
+  new Chart(ctx,{
+    type:"line",
+    data:{
+      labels:data.labels.map(d=>{const p=d.split("-");return p[1]+"/"+p[2];}),
+      datasets:[
+        {label:"Total",data:data.total||[],borderColor:"#f59e0b",backgroundColor:"rgba(245,158,11,.1)",fill:true,tension:.3,pointRadius:3},
+        {label:"Positive",data:data.positive||[],borderColor:"rgba(74,222,128,.7)",tension:.3,pointRadius:2,borderDash:[3,3]},
+        {label:"Negative",data:data.negative||[],borderColor:"rgba(248,113,113,.7)",tension:.3,pointRadius:2,borderDash:[3,3]}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:"#94a3b8",font:{size:11}}}},
+      scales:{
+        x:{ticks:{color:"#71717a",font:{size:10}},grid:{display:false}},
+        y:{ticks:{color:"#71717a",font:{size:10}},grid:{color:"rgba(255,255,255,.05)"}}
+      }
+    }
+  });
+}
+
+function renderNetworkGraph(data){
+  const el=document.getElementById("networkGraph");
+  if(!el)return;
+  const nodes=data.nodes||[];
+  const edges=data.edges||[];
+  if(!nodes.length){
+    el.innerHTML=`<p style="text-align:center;padding:180px 20px;color:var(--muted)"><i class="fas fa-share-nodes"></i> No cluster network data yet. Generate clusters first.</p>`;
+    return;
+  }
+
+  const width=el.clientWidth||800;
+  const height=400;
+
+  // Build D3 force graph
+  const svg = d3.select(el).append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .style("background","transparent");
+
+  const g = svg.append("g");
+
+  const zoom = d3.zoom().scaleExtent([0.1, 4]).on("zoom", (event)=>g.attr("transform", event.transform));
+  svg.call(zoom);
+
+  // Build nodes + links for D3
+  const d3Nodes = nodes.map(n=>({
+    id: n.id,
+    label: n.label.slice(0,25),
+    size: n.size||10,
+    color: n.color||0,
+    article_count: n.article_count||0
+  }));
+  const nodeMap = new Map(d3Nodes.map(n=>[n.id, n]));
+
+  const d3Links = edges.map(e=>({
+    source: nodeMap.has(e.source) ? e.source : e.source,
+    target: nodeMap.has(e.target) ? e.target : e.target,
+    weight: e.weight||1
+  })).filter(l=>l.source!==l.target);
+
+  const simulation = d3.forceSimulation(d3Nodes)
+    .force("link", d3.forceLink(d3Links).id(d=>d.id).distance(100).strength(d=>d.weight*0.3))
+    .force("charge", d3.forceManyBody().strength(-200))
+    .force("center", d3.forceCenter(width/2, height/2))
+    .force("collision", d3.forceCollide().radius(d=>d.size+5));
+
+  // Links
+  const link = g.append("g")
+    .selectAll("line")
+    .data(d3Links)
+    .join("line")
+    .attr("stroke", "rgba(245,158,11,.2)")
+    .attr("stroke-width", d=>Math.min(d.weight,4))
+    .attr("stroke-dasharray", d=>d.shared_keywords?"3,3":"none");
+
+  // Nodes
+  const node = g.append("g")
+    .selectAll("circle")
+    .data(d3Nodes)
+    .join("circle")
+    .attr("r", d=>Math.max(d.size,6))
+    .attr("fill", d=>d.color>0.1?"rgba(74,222,128,.7)":d.color<-0.1?"rgba(248,113,113,.7)":"rgba(245,158,11,.6)")
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 1.5)
+    .call(d3.drag()
+      .on("start", (event,d)=>{
+        if(!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+      })
+      .on("drag", (event,d)=>{
+        d.fx = event.x;
+        d.fy = event.y;
+      })
+      .on("end", (event,d)=>{
+        if(!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+      })
+    );
+
+  // Labels
+  const label = g.append("g")
+    .selectAll("text")
+    .data(d3Nodes)
+    .join("text")
+    .text(d=>d.label)
+    .attr("font-size", "10px")
+    .attr("fill", "#94a3b8")
+    .attr("dx", d=>d.size+6)
+    .attr("dy", 4);
+
+  // Tooltips
+  node.append("title")
+    .text(d=>`${d.label}\nArticles: ${d.article_count}\nSentiment: ${d.color.toFixed(2)}`);
+
+  // Tick handler
+  simulation.on("tick", ()=>{
+    link
+      .attr("x1", d=>d.source.x)
+      .attr("y1", d=>d.source.y)
+      .attr("x2", d=>d.target.x)
+      .attr("y2", d=>d.target.y);
+
+    node
+      .attr("cx", d=>d.x)
+      .attr("cy", d=>d.y);
+
+    label
+      .attr("x", d=>d.x)
+      .attr("y", d=>d.y);
+  });
+}
+
+// ─── AUDIO TAB ───
+async function loadAudioTab(){
+  const content=$("content");
+  try{
+    const [chkRes, clsRes] = await Promise.all([
+      fetch(AI_API+"/chunks?language=en&limit=20").then(r=>r.json()),
+      fetch(AI_API+"/clusters?limit=10").then(r=>r.json())
+    ]);
+
+    const chunks = chkRes.chunks||[];
+    const clusters = clsRes.clusters||[];
+
+    let html=`
+      <div class="gen-section">
+        <h3><i class="fas fa-headphones"></i>&nbsp;Audio Reports</h3>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+          Generate spoken audio from analysis chunks and intelligence briefs. 
+          Supports English (Jenny) and French (Denise) voices via edge-tts.
+        </p>
+      </div>`;
+
+    if(clusters.length){
+      html+=`<h3 style="font-size:14px;font-weight:600;margin:16px 0 10px;color:var(--muted)">GENERATE FROM CLUSTER</h3>
+      <div class="gen-controls" style="margin-bottom:16px">
+        <div>
+          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Select Cluster</label>
+          <select id="audioCluster" style="padding:10px 14px;background:#1a1f2e;border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:13px;min-width:250px">`;
+      clusters.forEach(c=>{
+        html+=`<option value="${c.id}">${escapeHtml((c.name||"Cluster").slice(0,40))} (${c.article_count||0} articles)</option>`;
+      });
+      html+=`</select></div>
+        <div>
+          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Language</label>
+          <select id="audioLang" style="padding:10px 14px;background:#1a1f2e;border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:13px">
+            <option value="en">English</option>
+            <option value="fr">French</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">&nbsp;</label>
+          <button class="gen-btn" aria-label="Generate audio report from selected cluster" onclick="generateAudioFromCluster()">
+            <i class="fas fa-headphones"></i>&nbsp;Generate & Play
+          </button>
+        </div>
+      </div>`;
+    }
+
+    if(chunks.length){
+      html+=`<h3 style="font-size:14px;font-weight:600;margin:16px 0 10px;color:var(--muted)">AVAILABLE AUDIO</h3>
+      <div class="article-list">`;
+      chunks.forEach(c=>{
+        const hasAudio = c.audio_file && c.audio_file.length > 5 && !c.audio_file.startsWith("(");
+        html+=`<div class="article-item">
+          <div class="atitle" style="cursor:default">${escapeHtml(c.title||"Chunk #"+c.id)}</div>
+          <div class="ameta">
+            <span class="asource"><i class="fas fa-file-waveform"></i>&nbsp;${escapeHtml(c.cluster_name||"Unknown cluster")}</span>
+            ${hasAudio
+              ? `<span style="color:var(--green)"><i class="fas fa-check-circle"></i>&nbsp;Audio ready</span>`
+              : `<span style="color:var(--muted)"><i class="fas fa-circle-notch"></i>&nbsp;No audio yet</span>`
+            }
+            <span>Score: ${c.sentiment_score||0}</span>
+          </div>
+        </div>`;
+      });
+      html+=`</div>`;
+    } else {
+      html+=`<div class="empty-state"><i class="fas fa-headphones"></i><p>No chunks available. Generate clusters and chunks first.</p></div>`;
+    }
+
+    content.innerHTML=html;
+  } catch(e){
+    content.innerHTML=`<div class="error-state"><i class="fas fa-triangle-exclamation"></i><p>${e.message}</p></div>`;
+  }
+}
+
+async function generateAudioFromCluster(){
+  const cid=document.getElementById("audioCluster")?.value;
+  const lang=document.getElementById("audioLang")?.value;
+  if(!cid){showToast("Select a cluster first","error");return;}
+  try{
+    const res=await fetch(AI_API+`/chunks/generate/${cid}?language=${lang}`,{method:"POST"});
+    const data=await res.json();
+    if(data.error) throw new Error(data.error);
+    const chunkId=data.chunk_id;
+    if(!chunkId){showToast("Chunk created but no ID returned","error");return;}
+
+    // Now generate audio for this chunk
+    const audioRes=await fetch(AI_API+`/audio/generate/${chunkId}?language=${lang}`,{method:"POST"});
+    const audioData=await audioRes.json();
+    if(audioData.audio_file){
+      showToast("Audio report generated for chunk #"+chunkId);
+      loadAudioTab();
+    } else {
+      showToast("Chunk created (audio tool unavailable in container)");
+    }
+  } catch(e){
+    showToast(e.message,"error");
+  }
+}
+
+// ─── INIT ───
+loadDashboard();
+</script>
+</body>
+</html>
